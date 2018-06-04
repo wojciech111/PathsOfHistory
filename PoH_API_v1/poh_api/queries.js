@@ -32,19 +32,27 @@ function getEvents(req, res, next) {
   var startXcord = parseFloat(req.params.startXcord);
   var endXcord = parseFloat(req.params.endXcord);
   console.log("startXcord",startXcord, "endXcord", endXcord);
+  let queryXwhere='';
+  if(startXcord <= endXcord){
+    queryXwhere=`and coordinate_x >= ${startXcord} and coordinate_x <= ${endXcord}`;
+  } else {
+    queryXwhere=`and ((coordinate_x >= ${startXcord} and coordinate_x <= 180) or
+      (coordinate_x >= 0 and coordinate_x <= ${endXcord}))`;
+    console.log("inverted X");
+  }
   var startYcord = parseFloat(req.params.startYcord);
   var endYcord = parseFloat(req.params.endYcord);
   console.log("startYcord",startYcord, "endYcord", endYcord);
 
+
   db.any(`select *  from events where
   date_of_event >= '${startDate}'
   and date_of_event <=  '${endDate}'
-  and coordinate_x >= ${startXcord}
-  and coordinate_x <= ${endXcord}
+  ${queryXwhere}
   and coordinate_y >= ${startYcord}
   and coordinate_y <= ${endYcord}
   order by popularitysum desc
-  limit 30`)
+  `)//limit 30
     .then(function (data) {
       res.send(data)
       /*res.status(200)
