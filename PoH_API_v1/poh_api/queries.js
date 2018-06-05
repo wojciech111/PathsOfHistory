@@ -26,6 +26,8 @@ function getAllPuppies(req, res, next) {
 //var pupID = parseInt(req.params.id);
 //  db.one('select * from pups where id = $1', pupID)
 function getEvents(req, res, next) {
+  console.log("GOT API CALL");
+  console.log(req.params.startDate);
   var startDate = new Date(req.params.startDate).toISOString().split('T')[0];
   var endDate = new Date(req.params.endDate).toISOString().split('T')[0];
   console.log("startDate",startDate, "endDate", endDate);
@@ -37,7 +39,7 @@ function getEvents(req, res, next) {
     queryXwhere=`and coordinate_x >= ${startXcord} and coordinate_x <= ${endXcord}`;
   } else {
     queryXwhere=`and ((coordinate_x >= ${startXcord} and coordinate_x <= 180) or
-      (coordinate_x >= 0 and coordinate_x <= ${endXcord}))`;
+      (coordinate_x >= -180 and coordinate_x <= ${endXcord}))`;
     console.log("inverted X");
   }
   var startYcord = parseFloat(req.params.startYcord);
@@ -52,7 +54,7 @@ function getEvents(req, res, next) {
   and coordinate_y >= ${startYcord}
   and coordinate_y <= ${endYcord}
   order by popularitysum desc
-  `)//limit 30
+  limit 100`)//
     .then(function (data) {
       res.send(data)
       /*res.status(200)

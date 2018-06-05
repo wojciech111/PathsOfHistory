@@ -19,8 +19,19 @@ const Marker = (props) => {
 
   };
   //console.log(props.name);
+  let cat = '';
+  if(props.category){
+    cat = <div style={{textAlign:'center'}}>Category: {props.category}</div>;
+  }
+  let tip = (
+    <div>
+      <div style={{textAlign:'center'}}>{props.year}</div>
+      <div style={{textAlign:'center'}}>{props.name}</div>
+      {cat}
+    </div>
+  );
   return (
-      <Tooltip overlay={<span>{props.name}</span>} placement='top'><div style={styles.markerStyle}></div></Tooltip>
+      <Tooltip overlay={tip} placement='top'><div onClick={() => props.showArticle(props.name, props.image)} style={styles.markerStyle}></div></Tooltip>
   );
 };
 

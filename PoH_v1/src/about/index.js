@@ -1,25 +1,23 @@
 import React, { Component } from 'react';
 import GoogleMapReact from 'google-map-react';
-import Slider, { Range } from 'rc-slider';
-// We can just import Slider or Range to reduce bundle size
-// import Slider from 'rc-slider/lib/Slider';
-// import Range from 'rc-slider/lib/Range';
-import 'rc-slider/assets/index.css';
+
 
 
 import Marker from '../common/components/Marker';
+import ArticleDrawer from '../common/components/ArticleDrawer';
+import Legend from '../common/components/Legend';
+import DateRange from '../common/components/DateRange';
 
-const AnyReactComponent = ({ text }) => <div style={{backgroundColor: 'white'}}>{text}</div>;
 
 class SimpleMap extends Component {
 
     static defaultProps = {
         center: {
-            lat: 59.95,
-            lng: 130.33
+            lat: 49.95,
+            lng: 19.33
         },
         fullscreenControl: false,
-        zoom: 3
+        zoom: 4
     };
     constructor(props) {
         super(props);
@@ -30,9 +28,10 @@ class SimpleMap extends Component {
             lng:[],//cords x
             lat:[], //cord y
             zoom: 3,
-            sidePaneEvent: null,
-            sidePaneOpne: false,
-            sidePaneArticle: null
+            sideDrawerOpen: false,
+            sideDrawerTitle: null,
+            sideDrawerImage: null,
+            sideDrawerArticle: null
         };
     }
 
@@ -92,6 +91,17 @@ class SimpleMap extends Component {
 
 
     }
+    formatYear = (year) => {
+      let outputYear = '';
+      if(year < 10) {
+        outputYear='000'.concat(year);
+      } else if(year < 100) {
+        outputYear='00'.concat(year);
+      }else {
+        outputYear = year;
+      }
+      return outputYear;
+    }
     getEventsFromApi = () => {
       const colorsObj = {
         aqua: "#00ffff",
@@ -141,12 +151,13 @@ class SimpleMap extends Component {
       const colors = Object.keys(colorsObj);
       console.log("API start call");
       const {yearsRange,lng,lat} = this.state;
+
       const endpointUrl = 'http://localhost:3000/',
           fullUrl = endpointUrl +
-            `api/events/${yearsRange[0]}-01-01/${yearsRange[1]}-01-01/${lng[0]}/${lng[1]}/${lat[0]}/${lat[1]}` ,
+            `api/events/${this.formatYear(yearsRange[0])}-01-01/${this.formatYear(yearsRange[1])}-01-01/${lng[0]}/${lng[1]}/${lat[0]}/${lat[1]}` ,
           headers = { 'Accept': 'application/json' };
 
-      //console.log(fullUrl);
+      console.log(fullUrl);
 
 
       fetch( fullUrl, { headers } ).then( body => body.json() ).then( json => {
@@ -171,6 +182,25 @@ class SimpleMap extends Component {
         //var unique = events.filter((item, i, ar) =>  ar.indexOf(item) === i; );
       });
     }
+    getArticleFromWiki = (name) => {
+      //const wikiURL = `http://en.wikipedia.org/w/api.php?action=query&prop=extracts&origin=*&format=json&exintro=&titles=${encodeURIComponent(name)}`,
+      const wikiURL = `http://en.wikipedia.org/w/api.php?action=query&prop=extracts&origin=*&format=json&exintro=&titles=${encodeURIComponent(name)}`,
+          headers = {  };
+
+      console.log(wikiURL);
+
+
+      fetch( wikiURL, { headers } ).then( body => body.json() ).then( json => {
+        //console.log(json.query.pages);
+        var keys = [];
+        for(var k in json.query.pages) keys.push(k);
+        //console.log(json.query.pages[keys[0]].extract);
+        this.setState({sideDrawerArticle: json.query.pages[keys[0]].extract});
+        //console.log("how many events got from API: ",this.state.events/*.length*/);
+
+        return json;
+      })
+    }
     afterRangeChange = (yearsRange) => {
       this.setState({yearsRange}, () => {this.getEventsFromApi();});
       //console.log("yearsRange", yearsRange);
@@ -185,20 +215,48 @@ class SimpleMap extends Component {
       //console.log("x:",lng," y:",lat);
       this.setState({lng,lat, zoom},()=>{this.getEventsFromApi();})
     }
+    showArticle = (name, image) => {
+      this.setState(
+        {
+          sideDrawerOpen:true,
+          sideDrawerTitle: name,
+          sideDrawerImage: image
+        },
+        this.getArticleFromWiki(name)
+      );
+      console.log("OPEEEN",name);
+
+    }
+    hideArticle = () => {
+      console.log("CLOSE");
+      this.setState({sideDrawerOpen:false});
+    }
 
     render() {
         //console.log("state.events", this.state.events);
-
+        let dates ={};
         let markers = this.state.events.map((event, i) => {
             let lng = event.coordinate_x;
             let lat = event.coordinate_y;
             let name = event.placelabel;
+            let image = event.image;
+            let year = event.date_of_event.split('T')[0];//new Date(req.params.startDate).toISOString().split('T')[0]
             let popularitysum = event.popularitysum;
             let category = this.state.categories.find(x => x.instance_of === event.instance_of);
             let color ='';
+            let categoryName ='';
             if(category){
               color = category.color;
+              categoryName= category.instance_of_label;
             }
+            //console.log(new Date(event.date_of_event).getFullYear());
+            let basket = Math.floor(new Date(event.date_of_event).getFullYear()/10);
+            if(!dates[basket]){
+              dates[basket] = 1;
+            }else{
+              dates[basket]+= 1;
+            }
+
             //console.log("name",name);
             //console.log("COLOR",category);
             /*console.log("i ", i);
@@ -211,30 +269,27 @@ class SimpleMap extends Component {
                 lat={lat}
                 lng={lng}
                 name={name}
+                image={image}
+                year={year}
+                category={categoryName}
                 popularitysum={popularitysum}
                 color={color}
                 zoom={this.state.zoom}
+                showArticle={(name, image)=>this.showArticle(name, image)}
             />;
         });
-        const styles = {
-            rangeContStyle: {
-                position: 'absolute',
-                width: '80%',
-                bottom: '10%',
-                left: '10%',
-                backgroundColor: '#fff',
-                padding: 10
-            },
+        //console.log(dates);
 
 
-        };
-        const Slider = require('rc-slider');
-    		const createSliderWithTooltip = Slider.createSliderWithTooltip;
-    		const Range = createSliderWithTooltip(Slider.Range);
         //console.log("marker", this.state);
+        let sideDrawer = '';
+        if(this.state.sideDrawerOpen){
+          sideDrawer = <ArticleDrawer title={this.state.sideDrawerTitle} image={this.state.sideDrawerImage} close={()=>this.hideArticle()}>{this.state.sideDrawerArticle}</ArticleDrawer>;
+        }
         return (
             // Important! Always set the container height explicitly
             <div style={{ height: '100vh', width: '100%' }}>
+
                 <GoogleMapReact
                     defaultCenter={this.props.center}
                     defaultZoom={this.props.zoom}
@@ -244,16 +299,9 @@ class SimpleMap extends Component {
 
                     {markers}
                 </GoogleMapReact>
-                <div style={styles.rangeContStyle}>
-                  <Range style={styles.rangeStyle} onAfterChange={(value) => {this.afterRangeChange(value)}}
-                    min={-2000} max={2018} defaultValue={this.state.yearsRange} tipProps={{visible:true}}
-                    tipFormatter={value => {
-    							if (value>=0){
-    								return `${value} n.e.`
-    							} else {
-    								return `${value*-1} p.n.e.`
-    							}
-    						}}/></div>
+                {sideDrawer}
+                <Legend categories={this.state.categories} numberOfEvents={this.state.events.length}></Legend>
+                <DateRange yearsRange={this.state.yearsRange} afterRangeChange={this.afterRangeChange} dates={dates} yearsRange={this.state.yearsRange}></DateRange>
             </div>
         );
     }
